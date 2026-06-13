@@ -302,7 +302,7 @@ onMounted(async () => {
     
     ownerReviews.value = await reviewApi.list({ revieweeId: instrument.value.ownerId, targetType: 'user' })
     
-    loadMaintenances()
+    await loadMaintenances()
   } catch (e) {
     ElMessage.error('加载失败')
   }
@@ -314,6 +314,7 @@ const loadMaintenances = async () => {
     maintenances.value = all
   } catch (e) {
     console.error('加载保养记录失败', e)
+    ElMessage.error('保养记录加载失败')
   }
 }
 
@@ -329,6 +330,15 @@ const typeBadgeClass = (type) => {
 }
 
 const submitMaintenance = async () => {
+  if (!userStore.isLoggedIn) {
+    showMaintenance.value = false
+    requireLogin()
+    return
+  }
+  if (!isOwner.value) {
+    ElMessage.warning('只有乐器主人才能添加保养记录')
+    return
+  }
   if (!maintenanceForm.type) {
     ElMessage.warning('请选择保养类型')
     return
@@ -341,7 +351,6 @@ const submitMaintenance = async () => {
   try {
     await maintenanceApi.create({
       instrumentId: instrument.value.id,
-      ownerId: userStore.userId,
       type: maintenanceForm.type,
       date: new Date(maintenanceForm.date).toISOString().split('T')[0],
       cost: maintenanceForm.cost,
@@ -355,13 +364,21 @@ const submitMaintenance = async () => {
     maintenanceForm.description = ''
     loadMaintenances()
   } catch (e) {
-    ElMessage.error('添加失败')
+    ElMessage.error(e?.response?.data?.error || '添加失败')
   } finally {
     submitting.value = false
   }
 }
 
 const deleteMaintenance = async (id) => {
+  if (!userStore.isLoggedIn) {
+    requireLogin()
+    return
+  }
+  if (!isOwner.value) {
+    ElMessage.warning('只有乐器主人才能删除保养记录')
+    return
+  }
   try {
     await ElMessageBox.confirm('确定要删除这条保养记录吗？', '确认删除', {
       confirmButtonText: '删除',
@@ -373,7 +390,7 @@ const deleteMaintenance = async (id) => {
     loadMaintenances()
   } catch (e) {
     if (e !== 'cancel') {
-      ElMessage.error('删除失败')
+      ElMessage.error(e?.response?.data?.error || '删除失败')
     }
   }
 }

@@ -47,6 +47,11 @@ router.get('/:id', (req, res) => {
 });
 
 router.post('/', (req, res) => {
+  const currentUserId = req.headers['x-user-id'];
+  if (!currentUserId) {
+    return res.status(401).json({ error: '请先登录' });
+  }
+
   const instruments = readJSON('instruments.json', []);
   const instrument = instruments.find(i => i.id === req.body.instrumentId);
 
@@ -54,7 +59,7 @@ router.post('/', (req, res) => {
     return res.status(400).json({ error: '乐器不存在' });
   }
 
-  if (req.body.ownerId !== instrument.ownerId) {
+  if (currentUserId !== instrument.ownerId) {
     return res.status(403).json({ error: '只有乐器主人才能添加保养记录' });
   }
 
@@ -68,7 +73,7 @@ router.post('/', (req, res) => {
   const newRecord = {
     id: 'm' + uuidv4().slice(0, 8),
     instrumentId: req.body.instrumentId,
-    ownerId: req.body.ownerId,
+    ownerId: currentUserId,
     type: req.body.type,
     date: req.body.date || new Date().toISOString().split('T')[0],
     description: req.body.description || '',
@@ -83,6 +88,11 @@ router.post('/', (req, res) => {
 });
 
 router.put('/:id', (req, res) => {
+  const currentUserId = req.headers['x-user-id'];
+  if (!currentUserId) {
+    return res.status(401).json({ error: '请先登录' });
+  }
+
   const maintenances = readJSON('maintenances.json', []);
   const idx = maintenances.findIndex(m => m.id === req.params.id);
 
@@ -90,25 +100,39 @@ router.put('/:id', (req, res) => {
     return res.status(404).json({ error: '保养记录不存在' });
   }
 
+  if (currentUserId !== maintenances[idx].ownerId) {
+    return res.status(403).json({ error: '只有记录作者才能修改保养记录' });
+  }
+
   const validTypes = ['换弦', '调音', '维修', '清洁', '配件更换'];
   if (req.body.type && !validTypes.includes(req.body.type)) {
     return res.status(400).json({ error: '保养类型无效' });
   }
 
-  maintenances[idx] = { ...maintenances[idx], ...req.body, id: maintenances[idx].id };
+  maintenances[idx] = { ...maintenances[idx], ...req.body, id: maintenances[idx].id, ownerId: maintenances[idx].ownerId };
   writeJSON('maintenances.json', maintenances);
 
   res.json({ success: true, maintenance: maintenances[idx] });
 });
 
 router.delete('/:id', (req, res) => {
-  const maintenances = readJSON('maintenances.json', []);
-  const filtered = maintenances.filter(m => m.id !== req.params.id);
+  const currentUserId = req.headers['x-user-id'];
+  if (!currentUserId) {
+    return res.status(401).json({ error: '请先登录' });
+  }
 
-  if (filtered.length === maintenances.length) {
+  const maintenances = readJSON('maintenances.json', []);
+  const record = maintenances.find(m => m.id === req.params.id);
+
+  if (!record) {
     return res.status(404).json({ error: '保养记录不存在' });
   }
 
+  if (currentUserId !== record.ownerId) {
+    return res.status(403).json({ error: '只有记录作者才能删除保养记录' });
+  }
+
+  const filtered = maintenances.filter(m => m.id !== req.params.id);
   writeJSON('maintenances.json', filtered);
   res.json({ success: true });
 });
