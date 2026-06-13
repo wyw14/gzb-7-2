@@ -109,6 +109,46 @@
           </div>
         </div>
       </div>
+      
+      <div class="section-card card mt-20">
+        <div class="section-header-row">
+          <h3><el-icon><SetUp /></el-icon> 保养档案</h3>
+          <el-button v-if="isOwner" type="primary" size="small" @click="showMaintenance = true">
+            <el-icon><Plus /></el-icon> 添加保养记录
+          </el-button>
+        </div>
+        
+        <div v-if="maintenances.length === 0" class="empty-maintain">
+          <p>暂无保养记录</p>
+        </div>
+        
+        <div v-else class="maintain-list">
+          <div class="maintain-item" v-for="m in maintenances" :key="m.id">
+            <div class="maintain-left">
+              <span class="maintain-type-badge" :class="typeBadgeClass(m.type)">{{ m.type }}</span>
+            </div>
+            <div class="maintain-right">
+              <div class="maintain-top">
+                <span class="maintain-date">{{ m.date }}</span>
+                <span class="maintain-cost" v-if="m.cost">花费 ¥{{ m.cost }}</span>
+                <el-button
+                  v-if="isOwner"
+                  type="danger"
+                  size="small"
+                  text
+                  @click="deleteMaintenance(m.id)"
+                >删除</el-button>
+              </div>
+              <p class="maintain-desc">{{ m.description }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div v-if="maintenances.length > 0 && !isOwner" class="maintain-tip">
+          <el-icon><InfoFilled /></el-icon>
+          查看保养记录可帮助您判断乐器状态，决定是否适合长期借用
+        </div>
+      </div>
     </div>
     
     <el-dialog v-model="showBorrow" title="申请借用" width="500px">
@@ -167,6 +207,38 @@
         <el-button type="primary" :loading="submitting" @click="submitInvite">发送邀约</el-button>
       </template>
     </el-dialog>
+    
+    <el-dialog v-model="showMaintenance" title="添加保养记录" width="500px">
+      <el-form :model="maintenanceForm" label-width="90px">
+        <el-form-item label="保养类型">
+          <el-select v-model="maintenanceForm.type" placeholder="请选择保养类型" style="width: 100%">
+            <el-option label="换弦" value="换弦" />
+            <el-option label="调音" value="调音" />
+            <el-option label="维修" value="维修" />
+            <el-option label="清洁" value="清洁" />
+            <el-option label="配件更换" value="配件更换" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="保养日期">
+          <el-date-picker
+            v-model="maintenanceForm.date"
+            type="date"
+            placeholder="选择保养日期"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="花费金额">
+          <el-input-number v-model="maintenanceForm.cost" :min="0" :precision="0" placeholder="花费金额（元）" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="保养描述">
+          <el-input v-model="maintenanceForm.description" type="textarea" :rows="3" placeholder="请描述保养详情，如：更换了什么弦、调了哪些音等" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showMaintenance = false">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="submitMaintenance">提交记录</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -174,9 +246,9 @@
 import { ref, reactive, computed, onMounted, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
-import { instrumentApi, borrowApi, invitationApi, reviewApi } from '../api'
+import { instrumentApi, borrowApi, invitationApi, reviewApi, maintenanceApi } from '../api'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Goods, Medal, Location, Wallet, ChatDotRound, Document, User, Star, ChatLineSquare } from '@element-plus/icons-vue'
+import { Goods, Medal, Location, Wallet, ChatDotRound, Document, User, Star, ChatLineSquare, SetUp, Plus, InfoFilled } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -185,8 +257,10 @@ const requireLogin = inject('requireLogin', () => router.push('/login'))
 
 const instrument = ref(null)
 const ownerReviews = ref([])
+const maintenances = ref([])
 const showBorrow = ref(false)
 const showInvite = ref(false)
+const showMaintenance = ref(false)
 const submitting = ref(false)
 
 const borrowForm = reactive({
@@ -200,6 +274,13 @@ const inviteForm = reactive({
   meetTime: null,
   location: '',
   message: ''
+})
+
+const maintenanceForm = reactive({
+  type: '',
+  date: null,
+  cost: 0,
+  description: ''
 })
 
 const isOwner = computed(() => userStore.userId === instrument.value?.ownerId)
@@ -220,10 +301,82 @@ onMounted(async () => {
     inviteForm.value.instrument = instrument.value.category
     
     ownerReviews.value = await reviewApi.list({ revieweeId: instrument.value.ownerId, targetType: 'user' })
+    
+    loadMaintenances()
   } catch (e) {
     ElMessage.error('加载失败')
   }
 })
+
+const loadMaintenances = async () => {
+  try {
+    const all = await maintenanceApi.list({ instrumentId: instrument.value.id })
+    maintenances.value = all
+  } catch (e) {
+    console.error('加载保养记录失败', e)
+  }
+}
+
+const typeBadgeClass = (type) => {
+  const map = {
+    '换弦': 'badge-change-string',
+    '调音': 'badge-tuning',
+    '维修': 'badge-repair',
+    '清洁': 'badge-clean',
+    '配件更换': 'badge-accessory'
+  }
+  return map[type] || ''
+}
+
+const submitMaintenance = async () => {
+  if (!maintenanceForm.type) {
+    ElMessage.warning('请选择保养类型')
+    return
+  }
+  if (!maintenanceForm.date) {
+    ElMessage.warning('请选择保养日期')
+    return
+  }
+  submitting.value = true
+  try {
+    await maintenanceApi.create({
+      instrumentId: instrument.value.id,
+      ownerId: userStore.userId,
+      type: maintenanceForm.type,
+      date: new Date(maintenanceForm.date).toISOString().split('T')[0],
+      cost: maintenanceForm.cost,
+      description: maintenanceForm.description
+    })
+    ElMessage.success('保养记录已添加')
+    showMaintenance.value = false
+    maintenanceForm.type = ''
+    maintenanceForm.date = null
+    maintenanceForm.cost = 0
+    maintenanceForm.description = ''
+    loadMaintenances()
+  } catch (e) {
+    ElMessage.error('添加失败')
+  } finally {
+    submitting.value = false
+  }
+}
+
+const deleteMaintenance = async (id) => {
+  try {
+    await ElMessageBox.confirm('确定要删除这条保养记录吗？', '确认删除', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await maintenanceApi.remove(id)
+    ElMessage.success('已删除')
+    loadMaintenances()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
+  }
+}
 
 const submitBorrow = async () => {
   if (!userStore.isLoggedIn) {
@@ -525,6 +678,118 @@ const submitInvite = async () => {
 .text-danger {
   color: var(--danger-color);
   font-weight: 600;
+}
+
+.section-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.section-header-row h3 {
+  margin-bottom: 0;
+}
+
+.empty-maintain {
+  text-align: center;
+  padding: 30px 20px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.maintain-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.maintain-item {
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  background: var(--bg-light);
+  border-radius: 10px;
+}
+
+.maintain-left {
+  flex-shrink: 0;
+}
+
+.maintain-type-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.badge-change-string {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.badge-tuning {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.badge-repair {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.badge-clean {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.badge-accessory {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.maintain-right {
+  flex: 1;
+  min-width: 0;
+}
+
+.maintain-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.maintain-date {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.maintain-cost {
+  font-size: 13px;
+  color: var(--danger-color);
+  font-weight: 500;
+}
+
+.maintain-desc {
+  line-height: 1.6;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.maintain-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 10px 14px;
+  background: #eff6ff;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #1d4ed8;
 }
 
 .mt-20 {

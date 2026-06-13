@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
@@ -16,6 +16,7 @@ const borrowRoutes = require('./routes/borrows');
 const invitationRoutes = require('./routes/invitations');
 const checkinRoutes = require('./routes/checkins');
 const reviewRoutes = require('./routes/reviews');
+const maintenanceRoutes = require('./routes/maintenances');
 const recommendRoutes = require('./routes/recommendations');
 
 app.use('/api/users', userRoutes);
@@ -24,6 +25,7 @@ app.use('/api/borrows', borrowRoutes);
 app.use('/api/invitations', invitationRoutes);
 app.use('/api/checkins', checkinRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/maintenances', maintenanceRoutes);
 app.use('/api/recommendations', recommendRoutes);
 
 app.get('/api/health', (req, res) => {

@@ -1,0 +1,72 @@
+[
+  {
+    "id": "m001",
+    "instrumentId": "i001",
+    "ownerId": "u001",
+    "type": "换弦",
+    "date": "2026-03-15",
+    "description": "更换全套尼龙弦，使用达达里奥EJ45",
+    "cost": 80,
+    "createdAt": "2026-03-15T10:00:00.000Z"
+  },
+  {
+    "id": "m002",
+    "instrumentId": "i001",
+    "ownerId": "u001",
+    "type": "调音",
+    "date": "2026-04-02",
+    "description": "专业调音师调音，八度音准微调",
+    "cost": 50,
+    "createdAt": "2026-04-02T14:30:00.000Z"
+  },
+  {
+    "id": "m003",
+    "instrumentId": "i001",
+    "ownerId": "u001",
+    "type": "清洁",
+    "date": "2026-05-10",
+    "description": "指板护理油保养，琴体抛光",
+    "cost": 30,
+    "createdAt": "2026-05-10T09:00:00.000Z"
+  },
+  {
+    "id": "m004",
+    "instrumentId": "i004",
+    "ownerId": "u003",
+    "type": "维修",
+    "date": "2026-02-20",
+    "description": "琴码开胶修复，重新粘合加固",
+    "cost": 200,
+    "createdAt": "2026-02-20T11:00:00.000Z"
+  },
+  {
+    "id": "m005",
+    "instrumentId": "i004",
+    "ownerId": "u003",
+    "type": "配件更换",
+    "date": "2026-04-08",
+    "description": "更换腮托和肩垫，原装配件老化",
+    "cost": 120,
+    "createdAt": "2026-04-08T16:00:00.000Z"
+  },
+  {
+    "id": "m006",
+    "instrumentId": "i002",
+    "ownerId": "u002",
+    "type": "清洁",
+    "date": "2026-03-01",
+    "description": "键盘除尘，内部清理",
+    "cost": 60,
+    "createdAt": "2026-03-01T10:30:00.000Z"
+  },
+  {
+    "id": "m007",
+    "instrumentId": "i005",
+    "ownerId": "u004",
+    "type": "配件更换",
+    "date": "2026-01-25",
+    "description": "更换踩镲架和弹簧，原厂配件",
+    "cost": 350,
+    "createdAt": "2026-01-25T13:00:00.000Z"
+  }
+]

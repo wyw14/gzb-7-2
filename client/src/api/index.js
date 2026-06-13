@@ -62,6 +62,14 @@ export const reviewApi = {
   create: (data) => api.post('/reviews', data)
 }
 
+export const maintenanceApi = {
+  list: (params) => api.get('/maintenances', { params }),
+  get: (id) => api.get(`/maintenances/${id}`),
+  create: (data) => api.post('/maintenances', data),
+  update: (id, data) => api.put(`/maintenances/${id}`, data),
+  remove: (id) => api.delete(`/maintenances/${id}`)
+}
+
 export const recommendApi = {
   buddies: (userId, params) => api.get(`/recommendations/buddies/${userId}`, { params }),
   instruments: (userId, params) => api.get(`/recommendations/instruments/${userId}`, { params }),
