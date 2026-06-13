@@ -243,7 +243,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, inject } from 'vue'
+import { ref, reactive, computed, onMounted, inject, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { instrumentApi, borrowApi, invitationApi, reviewApi, maintenanceApi } from '../api'
@@ -295,22 +295,45 @@ const disabledDate = (time) => {
   return time.getTime() < Date.now() - 8.64e7
 }
 
-onMounted(async () => {
-  try {
-    instrument.value = await instrumentApi.get(route.params.id)
-    inviteForm.value.instrument = instrument.value.category
-    
-    ownerReviews.value = await reviewApi.list({ revieweeId: instrument.value.ownerId, targetType: 'user' })
-    
-    await loadMaintenances()
-  } catch (e) {
-    ElMessage.error('加载失败')
+onMounted(() => {
+  if (route.params.id) {
+    loadData(route.params.id)
   }
 })
 
-const loadMaintenances = async () => {
+watch(
+  () => route.params.id,
+  (newId) => {
+    if (newId) {
+      maintenances.value = []
+      ownerReviews.value = []
+      loadData(newId)
+    }
+  }
+)
+
+const loadData = async (id) => {
   try {
-    const all = await maintenanceApi.list({ instrumentId: instrument.value.id })
+    const inst = await instrumentApi.get(id)
+    instrument.value = inst
+    inviteForm.instrument = inst.category
+    
+    ownerReviews.value = await reviewApi.list({ revieweeId: inst.ownerId, targetType: 'user' })
+    
+    await loadMaintenances(inst.id)
+  } catch (e) {
+    console.error('加载详情失败', e)
+    ElMessage.error('加载失败')
+  }
+}
+
+const loadMaintenances = async (instrumentId) => {
+  if (!instrumentId) {
+    console.warn('instrumentId 为空，跳过保养记录加载')
+    return
+  }
+  try {
+    const all = await maintenanceApi.list({ instrumentId })
     maintenances.value = all
   } catch (e) {
     console.error('加载保养记录失败', e)
@@ -362,7 +385,7 @@ const submitMaintenance = async () => {
     maintenanceForm.date = null
     maintenanceForm.cost = 0
     maintenanceForm.description = ''
-    loadMaintenances()
+    loadMaintenances(instrument.value.id)
   } catch (e) {
     ElMessage.error(e?.response?.data?.error || '添加失败')
   } finally {
@@ -387,7 +410,7 @@ const deleteMaintenance = async (id) => {
     })
     await maintenanceApi.remove(id)
     ElMessage.success('已删除')
-    loadMaintenances()
+    loadMaintenances(instrument.value.id)
   } catch (e) {
     if (e !== 'cancel') {
       ElMessage.error(e?.response?.data?.error || '删除失败')
